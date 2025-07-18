@@ -1,0 +1,13 @@
+goals:
+1. copy a directory of files from acmbd to adoc
+2. generate a bag for each cuid with all neccesary keys in bag-info.txt
+3. transfer bag to rstar
+
+commands to implement:
+
+av project init         generate a project directory
+av source transfer      copy files from acmbd to adoc host
+av sip validate         ensure all sip directory conforms to specification
+av aip process          this will generate bags in the aips directory for each cuid directory in sip
+av aip validate         bagit fast validation
+av aip transfer         transfer to rstar
