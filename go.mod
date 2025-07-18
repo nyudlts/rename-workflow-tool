@@ -1,4 +1,4 @@
-module github.com/nyudlts/av-processor
+module github.com/nyudlts/rename-workflow-tool
 
 go 1.24.1
 
