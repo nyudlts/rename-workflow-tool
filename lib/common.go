@@ -3,6 +3,7 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 )
 
 var config *Config
@@ -25,5 +26,21 @@ func PrintFormattedJson(v any) error {
 	}
 
 	fmt.Println(string(data))
+	return nil
+}
+
+func loadConfig() error {
+	//read the adoc-config
+	b, err := os.ReadFile("config.json")
+	if err != nil {
+		return err
+	}
+
+	config = &Config{}
+	//unmarshal to config options
+	if err := json.Unmarshal(b, &config); err != nil {
+		return err
+	}
+
 	return nil
 }

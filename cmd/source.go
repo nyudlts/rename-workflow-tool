@@ -1,6 +1,11 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"os"
+
+	lib "github.com/nyudlts/rename-workflow-tool/lib"
+	"github.com/spf13/cobra"
+)
 
 func init() {
 	sourceCmd.AddCommand(sourceTransferCmd)
@@ -26,5 +31,9 @@ var sourceSizeCmd = &cobra.Command{
 	Use: "size",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Println("source size command executed")
+		if err := lib.GetSourceSize(); err != nil {
+			cmd.Println("Error getting source size:", err)
+			os.Exit(1)
+		}
 	},
 }
