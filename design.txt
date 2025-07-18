@@ -5,9 +5,10 @@ goals:
 
 commands to implement:
 
-av project init         generate a project directory
-av source transfer      copy files from acmbd to adoc host
-av sip validate         ensure all sip directory conforms to specification
-av aip process          this will generate bags in the aips directory for each cuid directory in sip
-av aip validate         bagit fast validation
-av aip transfer         transfer to rstar
+rename project init         generate a project directory
+rename source transfer      copy files from acmbd to adoc host
+rename sip validate         ensure all sip directory conforms to specification
+rename aip process          this will generate bags in the aips directory for each cuid directory in sip
+rename aip validate         bagit fast validation
+rename aip transfer         transfer to rstar
+rename project archive      closeout the project compress logs
