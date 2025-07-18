@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,7 +10,10 @@ import (
 	"github.com/nyudlts/bytemath"
 )
 
-var config *Config
+var (
+	config *Config
+	writer *bufio.Writer
+)
 
 type Config struct {
 	SIPLoc         string `json:"sip-location"`
