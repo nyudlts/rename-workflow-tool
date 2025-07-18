@@ -24,6 +24,10 @@ var sourceTransferCmd = &cobra.Command{
 	Use: "transfer",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Println("source transfer command executed")
+		if err := lib.TransferSourcePackage(); err != nil {
+			cmd.Println("Error transferring source package:", err)
+			os.Exit(1)
+		}
 	},
 }
 
@@ -31,7 +35,7 @@ var sourceSizeCmd = &cobra.Command{
 	Use: "size",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Println("source size command executed")
-		if err := lib.GetSourceSize(); err != nil {
+		if err := lib.PrintSourceSize(); err != nil {
 			cmd.Println("Error getting source size:", err)
 			os.Exit(1)
 		}

@@ -48,7 +48,7 @@ func loadConfig() error {
 	return nil
 }
 
-func getPackageSize(pkgPath string) error {
+func printPackageSize(pkgPath string) error {
 	numFiles := 0
 	numDirectories := 0
 	sizeFiles := int64(0)

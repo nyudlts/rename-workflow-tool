@@ -1,13 +1,17 @@
 package lib
 
-func GetSourceSize() error {
+func PrintSourceSize() error {
 	if err := loadConfig(); err != nil {
 		return err
 	}
 
-	if err := getPackageSize(config.SourceLoc); err != nil {
+	if err := printPackageSize(config.SourceLoc); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func TransferSourcePackage() error {
 	return nil
 }
