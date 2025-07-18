@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/nyudlts/bytemath"
 )
 
 var config *Config
@@ -42,5 +45,26 @@ func loadConfig() error {
 		return err
 	}
 
+	return nil
+}
+
+func getPackageSize(pkgPath string) error {
+	numFiles := 0
+	numDirectories := 0
+	sizeFiles := int64(0)
+
+	if err := filepath.Walk(pkgPath, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			numDirectories++
+		} else {
+			numFiles++
+			sizeFiles += info.Size()
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	fmt.Printf("%s: %d files in %d directories, %s\n", pkgPath, numFiles, numDirectories, bytemath.ConvertBytesToHumanReadable(sizeFiles))
 	return nil
 }
