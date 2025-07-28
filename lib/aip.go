@@ -15,6 +15,8 @@ import (
 	bagit "github.com/nyudlts/go-bagit"
 )
 
+var transferPtn = regexp.MustCompile("transfer-info.txt")
+
 func PrepAIP() error {
 	fmt.Println("prepping aip")
 
@@ -73,7 +75,7 @@ func PrepAIP() error {
 			return err
 		}
 
-		desc := "\nInternal-sender-description: " + row.GetTitle()
+		desc := "Internal-sender-description: " + row.GetTitle() + "\n"
 		transferInfoBytes = append(transferInfoBytes, []byte(desc)...)
 
 		targetTransferInfo := filepath.Join(aipMdDir, "transfer-info.txt")
@@ -157,6 +159,7 @@ func UpdateAIP() error {
 	}
 
 	for _, aipDir := range aipDirs {
+		fmt.Println("updating", aipDir.Name())
 		bagPath := filepath.Join(config.AIPLoc, aipDir.Name())
 
 		bag, err := bagit.GetExistingBag(bagPath)
@@ -166,7 +169,7 @@ func UpdateAIP() error {
 
 		//Locate transfer-info.txt
 		fmt.Printf("  * Locating transfer-info.txt: ")
-		matches := bag.Payload.FindFilesInPayload(regexp.MustCompile("transfer-info.txt"))
+		matches := bag.Payload.FindFilesInPayload(transferPtn)
 		if len(matches) != 1 {
 			return fmt.Errorf("no transfer-info.txt found")
 		}
