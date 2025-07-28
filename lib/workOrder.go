@@ -34,10 +34,9 @@ func getWorkOrderFile(path string) error {
 }
 
 func validateWorkOrder() error {
-
 	wof, err := os.Open(woPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer wof.Close()
 

@@ -88,6 +88,12 @@ func mkProjectDir() error {
 		return err
 	}
 
+	//create the bagit output directory
+	fmt.Println("* Creating rsync directory:", config.LogLoc+"/bagit")
+	if err := os.Mkdir(filepath.Join(config.ProjectLoc, "logs", "bagit"), 0775); err != nil {
+		return err
+	}
+
 	//create the sip output directory
 	fmt.Println("* Creating sip directory:", config.SIPLoc)
 	if err := os.Mkdir(filepath.Join(config.ProjectLoc, "sip"), 0775); err != nil {

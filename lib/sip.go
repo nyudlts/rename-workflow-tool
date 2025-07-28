@@ -5,11 +5,33 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
+type SIPDirs []os.DirEntry
+
 var (
-	mdDir string
+	mdDir   string
+	sipDirs SIPDirs
 )
+
+func (sds SIPDirs) get(s string) (os.DirEntry, error) {
+	for _, sipDir := range sds {
+		if strings.Contains(sipDir.Name(), s) {
+			return sipDir, nil
+		}
+	}
+	return nil, fmt.Errorf("no corresponding sip found")
+}
+
+func (sds SIPDirs) contains(s string) bool {
+	for _, sipDir := range sds {
+		if strings.Contains(sipDir.Name(), s) {
+			return true
+		}
+	}
+	return false
+}
 
 func GetSipSize() error {
 	if err := loadConfig(); err != nil {
@@ -65,13 +87,14 @@ func ValidateSip() error {
 		validationError = true
 	}
 
-	//chech that work order is valid
+	//check that work order is valid
 	fmt.Printf("  * checking work order is valid\n")
 	if err := validateWorkOrder(); err != nil {
 		log.Printf("[ERROR] %s\n", err)
 		fmt.Printf("  [ERROR] %s\n", err)
 		validationError = true
 	}
+
 	//check work order for duplicates
 	fmt.Printf("  * checking work order for duplicates\n")
 	if err := checkWorkOrderForDuplicates(); err != nil {
@@ -84,20 +107,15 @@ func ValidateSip() error {
 	fmt.Printf("  * checking SIP for missing directories\n")
 	if err := checkSIPForMissingDirectories(); err != nil {
 		log.Printf("[ERROR] %s\n", err)
-		fmt.Printf("  [ERROR] %s\n", err)
 		validationError = true
 	}
 
-	//check sip for extra directories
-
-	fmt.Printf("  * checking SIP for extra directories\n")
-	if err := checkSIPForExtraDirectories(); err != nil {
+	//check for transfer info.txt
+	fmt.Println("  * checking valid transfer-info.txt exists")
+	if err := validateTransferInfo(); err != nil {
 		log.Printf("[ERROR] %s\n", err)
-		fmt.Printf("  [ERROR] %s\n", err)
 		validationError = true
 	}
-
-	//check that a transfer info exists
 
 	if validationError {
 		return fmt.Errorf("SIP is not valid, see logs for details")
@@ -121,13 +139,20 @@ func checkMetadataDirExists() error {
 }
 
 func checkSIPForMissingDirectories() error {
+	//get a list of dirs in payload
+	var err error
+	sipDirs, err = os.ReadDir(config.SIPLoc)
+	if err != nil {
+		return err
+	}
+
 	missingDirs := 0
-	for _, componentID := range componentIDs {
-		erLocation := filepath.Join(config.SIPLoc, componentID)
-		if _, err := os.Stat(erLocation); err != nil {
+	for _, row := range workOrder.Rows {
+		componentID := row.GetComponentID()
+		if !sipDirs.contains(componentID) {
 			missingDirs++
 			log.Printf("[ERROR] componentID, %s is missing in transfered directories\n", componentID)
-			fmt.Printf("  * cuid %s is missing from transferred directories", componentID)
+			fmt.Printf("    * cuid %s is missing from transferred directories\n", componentID)
 		}
 	}
 
@@ -156,7 +181,7 @@ func checkSIPForExtraDirectories() error {
 		}
 
 		if extraDirs > 0 {
-			return fmt.Errorf("SIP contains %d extra directories, see validation log", extraDirs)
+			return fmt.Errorf("SIP contains %d extra directories", extraDirs)
 		} else {
 			return nil
 		}

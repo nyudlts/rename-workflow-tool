@@ -25,7 +25,7 @@ var sipValidateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Println("sip validate command executed")
 		if err := lib.ValidateSip(); err != nil {
-			cmd.Println("Error validating SIP")
+			cmd.Printf("  [ERROR] %s", err.Error())
 			os.Exit(1)
 		}
 		cmd.Println("SIP validation completed successfully")
