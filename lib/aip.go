@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/google/uuid"
@@ -134,7 +135,14 @@ func BagAIP() error {
 		if _, err := os.Create(logName); err != nil {
 			return err
 		}
-		bagCmd := exec.Command("bagit.py", "--sha256", targetDir)
+		var bagCmd *exec.Cmd
+
+		if runtime.GOOS == "windows" {
+			bagCmd = exec.Command("python", "-m", "bagit", "--sha256", targetDir)
+		} else {
+			bagCmd = exec.Command("bagit.py", "--sha256", targetDir)
+		}
+
 		cmdOut, err := bagCmd.CombinedOutput()
 		if err != nil {
 			return err
@@ -287,23 +295,36 @@ func ValidateAIPs() error {
 		if entry.IsDir() {
 
 			aipPath := filepath.Join(config.AIPLoc, entry.Name())
-			bag, err := bagit.GetExistingBag(aipPath)
-			if err != nil {
-				return err
+			if runtime.GOOS == "windows" {
+				valCmd := exec.Command("python", "-m", "bagit", "--validate", aipPath)
+				cmdOut, err := valCmd.CombinedOutput()
+				if err != nil {
+					return err
+				}
+				fmt.Println(string(cmdOut))
+			} else {
+				bag, err := bagit.GetExistingBag(aipPath)
+				if err != nil {
+					return err
+				}
+
+				fmt.Printf("  * validating %s\n", entry.Name())
+				if err := bag.ValidateBag(false, false); err != nil {
+					return err
+				}
 			}
 
-			fmt.Printf("  * validating %s\n", entry.Name())
-			if err := bag.ValidateBag(false, false); err != nil {
-				return err
-			}
 		}
-
 	}
 
 	return nil
 }
 
 func TransferAIPs() error {
+
+	if err := loadConfig(); err != nil {
+		return err
+	}
 
 	directoryEntries, err := os.ReadDir(config.AIPLoc)
 	if err != nil {

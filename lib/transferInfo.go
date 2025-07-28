@@ -21,6 +21,8 @@ var (
 	useStatementPtn          = regexp.MustCompile(`electronic-records-reading-room`)
 )
 
+var transferInfo TransferInfo
+
 type TransferInfo struct {
 	ContactName               string `yaml:"Contact-Name"`
 	ContactPhone              string `yaml:"Contact-Phone"`
@@ -55,7 +57,7 @@ func validateTransferInfo() error {
 	if err != nil {
 		return err
 	}
-	transferInfo := TransferInfo{}
+	transferInfo = TransferInfo{}
 	if err := yaml.Unmarshal(xferBytes, &transferInfo); err != nil {
 		return err
 	}
