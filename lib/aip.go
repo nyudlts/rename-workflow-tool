@@ -56,7 +56,7 @@ func PrepAIP() error {
 
 		//create a directory in the aip directory with a UUID appended
 		id := uuid.New().String()
-		targetPath := filepath.Join(config.AIPLoc, sourceDir.Name()+"-"+id)
+		targetPath := filepath.Join(config.AIPLoc, config.CollectionCode+"_"+sourceDir.Name()+"-"+id)
 		if err := os.Mkdir(targetPath, 0755); err != nil {
 			return err
 		}
@@ -68,7 +68,6 @@ func PrepAIP() error {
 		}
 
 		//copy the transfer-info.txt to metadata
-
 		transferInfo := filepath.Join(config.SIPLoc, "metadata", "transfer-info.txt")
 
 		transferInfoBytes, err := os.ReadFile(transferInfo)
@@ -111,6 +110,8 @@ func PrepAIP() error {
 		if err := os.Rename(oldDir, newDir); err != nil {
 			return err
 		}
+
+		//aipUpdate should be run here
 
 	}
 
