@@ -54,7 +54,11 @@ func generateConfig(collectionCode string, sourceLocation string) error {
 	config.SIPLoc = filepath.Join(config.ProjectLoc, "sip")
 	config.AIPLoc = filepath.Join(config.ProjectLoc, "aips")
 	config.LogLoc = filepath.Join(config.ProjectLoc, "logs")
-	config.SourceLoc = sourceLocation
+	config.TmpLoc = filepath.Join(config.ProjectLoc, "tmp")
+	config.SourceLoc, err = filepath.Abs(sourceLocation)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -99,6 +103,13 @@ func mkProjectDir() error {
 	if err := os.Mkdir(filepath.Join(config.ProjectLoc, "sip"), 0775); err != nil {
 		return err
 	}
+
+	//create the tmp directory
+	fmt.Println("* Creating tmp directory:", config.TmpLoc)
+	if err := os.Mkdir(config.TmpLoc, 0775); err != nil {
+		return err
+	}
+
 	return nil
 }
 

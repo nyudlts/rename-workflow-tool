@@ -1,8 +1,9 @@
 Rename Workflow Tool
 ====================
 
-Prerequesites
+Prerequisites
 -------------
+
 Build
 -----
 

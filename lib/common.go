@@ -23,6 +23,7 @@ type Config struct {
 	ProjectLoc     string `json:"project-location"`
 	LogLoc         string `json:"log-location"`
 	AIPLoc         string `json:"aip-location"`
+	TmpLoc         string `json:"tmp-location"`
 }
 
 func PrintFormattedJson(v any) error {

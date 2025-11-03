@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -9,10 +8,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strings"
 
 	"github.com/google/uuid"
-	"github.com/nyudlts/go-aspace"
 	bagit "github.com/nyudlts/go-bagit"
 )
 
@@ -61,14 +58,7 @@ func PrepAIP() error {
 			return err
 		}
 
-		//create a metadata directory
-		aipMdDir := filepath.Join(targetPath, "metadata")
-		if err := os.Mkdir(aipMdDir, 0755); err != nil {
-			return err
-		}
-
 		//copy the transfer-info.txt to metadata
-
 		transferInfo := filepath.Join(config.SIPLoc, "metadata", "transfer-info.txt")
 
 		transferInfoBytes, err := os.ReadFile(transferInfo)
@@ -79,29 +69,10 @@ func PrepAIP() error {
 		desc := "Internal-sender-description: " + row.GetTitle() + "\n"
 		transferInfoBytes = append(transferInfoBytes, []byte(desc)...)
 
-		targetTransferInfo := filepath.Join(aipMdDir, "transfer-info.txt")
-		targetTransferInfoFile, err := os.Create(targetTransferInfo)
-		if err != nil {
-			return err
-		}
-		defer targetTransferInfoFile.Close()
+		fmt.Println(config.TmpLoc)
 
-		writer := bufio.NewWriter(targetTransferInfoFile)
-		writer.Write(transferInfoBytes)
-		writer.Flush()
-
-		//generate new workorder for current line in workorder to metadatadir
-		woName := filepath.Base(woPath)
-		targetWorkOrderPath := filepath.Join(aipMdDir, woName)
-		if _, err := os.Create(targetWorkOrderPath); err != nil {
-			return err
-		}
-
-		woBody := strings.Join(aspace.HEADER_ROW, "\t")
-		woBody = woBody + "\n"
-		woBody = woBody + row.String()
-
-		if err := os.WriteFile(targetWorkOrderPath, []byte(woBody), 0755); err != nil {
+		targetTransferInfo := filepath.Join(config.TmpLoc, fmt.Sprintf("%s-transfer-info.txt", id))
+		if err := os.WriteFile(targetTransferInfo, transferInfoBytes, 0755); err != nil {
 			return err
 		}
 
@@ -135,8 +106,9 @@ func BagAIP() error {
 		if _, err := os.Create(logName); err != nil {
 			return err
 		}
-		var bagCmd *exec.Cmd
 
+		//bag the transfer
+		var bagCmd *exec.Cmd
 		if runtime.GOOS == "windows" {
 			bagCmd = exec.Command("python", "-m", "bagit", "--sha256", targetDir)
 		} else {
@@ -175,19 +147,17 @@ func UpdateAIP() error {
 			return err
 		}
 
+		dirUUID := bag.Name[len(bag.Name)-36:]
+
 		//Locate transfer-info.txt
 		fmt.Printf("  * Locating transfer-info.txt: ")
-		matches := bag.Payload.FindFilesInPayload(transferPtn)
-		if len(matches) != 1 {
-			return fmt.Errorf("no transfer-info.txt found")
-		}
-		tiPath := matches[0].Path
-		tiPath = strings.ReplaceAll(tiPath+"/", bagPath, "")
+		tiFilename := fmt.Sprintf("%s-transfer-info.txt", dirUUID)
+
 		fmt.Printf("OK\n")
 
 		//create a tag set from transfer-info.txt
 		fmt.Printf("  * Creating new tag set from %s: ", "transfer-info.txt")
-		transferInfo, err := bagit.NewTagSet(tiPath, bagPath)
+		transferInfo, err := bagit.NewTagSet(tiFilename, config.TmpLoc)
 		if err != nil {
 			return err
 		}
