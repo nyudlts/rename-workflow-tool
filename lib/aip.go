@@ -130,6 +130,7 @@ func bagAIP(pkgPath string) error {
 	if err != nil {
 		return err
 	}
+	defer logFile.Close()
 
 	if _, err := logFile.Write(cmdOut); err != nil {
 		return err
