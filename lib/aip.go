@@ -202,7 +202,7 @@ func updateAIP(pkgPath string) error {
 	transferInfo.Tags["nyu-dl-pathname"] = path
 
 	//getting tagset from bag-info
-	fmt.Printf("  * Crating new tag set from %s\n", "bag-info.txt")
+	fmt.Printf("  * Creating new tag set from %s\n", "bag-info.txt")
 	bagInfo, err := bagit.NewTagSet("bag-info.txt", pkgPath)
 	if err != nil {
 		return err
