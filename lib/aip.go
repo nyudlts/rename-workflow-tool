@@ -209,7 +209,7 @@ func updateAIP(pkgPath string) error {
 	}
 
 	//merge tagsets
-	fmt.Println("  * Merging Tag Set")
+	fmt.Println("  * Merging Tag Sets")
 	bagInfo.AddTags(transferInfo.Tags)
 
 	fmt.Printf("  * Getting data as byte array\n")
