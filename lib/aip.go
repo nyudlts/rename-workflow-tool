@@ -190,7 +190,7 @@ func updateAIP(pkgPath string) error {
 	transferInfo.Tags["nyu-dl-hostname"] = hostname
 
 	//add pathname to the tag-set
-	fmt.Printf("  * Adding ag's path to tag set: ")
+	fmt.Printf("  * Adding bag's path to tag set: ")
 	path, err := filepath.Abs(pkgPath)
 	if err != nil {
 		return err
