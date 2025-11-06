@@ -10,13 +10,14 @@ import (
 	"runtime"
 
 	"github.com/google/uuid"
+	"github.com/nyudlts/go-aspace"
 	bagit "github.com/nyudlts/go-bagit"
 )
 
 var transferPtn = regexp.MustCompile("transfer-info.txt")
 
-func PrepAIP() error {
-	fmt.Println("prepping aip")
+func PrepAIPs() error {
+	fmt.Printf("rwt aip prep, %s\n", VERSION)
 
 	//load the config
 	if err := loadConfig(); err != nil {
@@ -44,53 +45,100 @@ func PrepAIP() error {
 
 	// for each line in the workorder
 	for _, row := range workOrder.Rows {
-		//get the corresponding directory in sip
-		fmt.Println("finding target dir", row.GetComponentID())
-		sourceDir, err := sipDirs.get(row.GetComponentID())
+
+		aipPath, err := prepareAIP(row)
 		if err != nil {
 			return err
 		}
 
-		//create a directory in the aip directory with a UUID appended
-		id := uuid.New().String()
-		targetPath := filepath.Join(config.AIPLoc, config.CollectionCode+"_"+sourceDir.Name()+"-"+id)
-		if err := os.Mkdir(targetPath, 0755); err != nil {
+		if err := bagAIP(aipPath); err != nil {
 			return err
 		}
 
-		//copy the transfer-info.txt to metadata
-		transferInfo := filepath.Join(config.SIPLoc, "metadata", "transfer-info.txt")
-
-		transferInfoBytes, err := os.ReadFile(transferInfo)
-		if err != nil {
+		if err := updateAIP(aipPath); err != nil {
 			return err
 		}
 
-		desc := "Internal-sender-description: " + row.GetTitle() + "\n"
-		transferInfoBytes = append(transferInfoBytes, []byte(desc)...)
+	}
 
-		fmt.Println(config.TmpLoc)
+	return nil
 
-		targetTransferInfo := filepath.Join(config.TmpLoc, fmt.Sprintf("%s-transfer-info.txt", id))
-		if err := os.WriteFile(targetTransferInfo, transferInfoBytes, 0755); err != nil {
-			return err
-		}
+}
 
-		//move target to payload
-		oldDir := filepath.Join(config.SIPLoc, sourceDir.Name())
-		newDir := filepath.Join(targetPath, sourceDir.Name())
-		if err := os.Rename(oldDir, newDir); err != nil {
-			return err
-		}
+func prepareAIP(row aspace.WorkOrderRow) (string, error) {
+	cuid := row.GetComponentID()
+	fmt.Printf("  * preparing aip for %s\n", cuid)
 
-		//aipUpdate should be run here
+	//get the corresponding directory in sip
+	sourceDir, err := sipDirs.get(cuid)
+	if err != nil {
+		return "", err
+	}
 
+	//create a directory in the aip directory with a UUID appended
+	id := uuid.New().String()
+	fmt.Printf("  * creating aip directory with id: %s\n", id)
+	targetPath := filepath.Join(config.AIPLoc, sourceDir.Name()+"-"+id)
+	if err := os.Mkdir(targetPath, 0755); err != nil {
+		return "", err
+	}
+
+	//copy the transfer-info.txt to metadata
+	transferInfo := filepath.Join(config.SIPLoc, "metadata", "transfer-info.txt")
+
+	transferInfoBytes, err := os.ReadFile(transferInfo)
+	if err != nil {
+		return "", err
+	}
+
+	desc := "Internal-sender-description: " + row.GetTitle() + "\n"
+	transferInfoBytes = append(transferInfoBytes, []byte(desc)...)
+
+	targetTransferInfo := filepath.Join(config.TmpLoc, fmt.Sprintf("%s-transfer-info.txt", id))
+	if err := os.WriteFile(targetTransferInfo, transferInfoBytes, 0755); err != nil {
+		return "", err
+	}
+
+	//move target to payload
+	oldDir := filepath.Join(config.SIPLoc, sourceDir.Name())
+	newDir := filepath.Join(targetPath, sourceDir.Name())
+	if err := os.Rename(oldDir, newDir); err != nil {
+		return "", err
+	}
+
+	return targetPath, nil
+}
+
+func bagAIP(pkgPath string) error {
+	fmt.Println("  * bagging", filepath.Base(pkgPath))
+
+	//bag the transfer
+	var bagCmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		bagCmd = exec.Command("python", "-m", "bagit", "--sha256", pkgPath)
+	} else {
+		bagCmd = exec.Command("bagit.py", "--sha256", pkgPath)
+	}
+
+	cmdOut, err := bagCmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+
+	logName := filepath.Join(config.LogLoc, "bagit", fmt.Sprintf("%s-bagit.log", config.CollectionCode))
+	logFile, err := os.OpenFile(logName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755)
+	if err != nil {
+		return err
+	}
+
+	if _, err := logFile.Write(cmdOut); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func BagAIP() error {
+func BagAIPs() error {
 	if err := loadConfig(); err != nil {
 		return err
 	}
@@ -103,29 +151,98 @@ func BagAIP() error {
 	for _, aipDir := range aipDirs {
 		targetDir := filepath.Join(config.AIPLoc, aipDir.Name())
 		fmt.Println("bagging", targetDir)
-
-		logName := filepath.Join(config.LogLoc, "bagit", fmt.Sprintf("%s_bagit.log", aipDir.Name()))
-		if _, err := os.Create(logName); err != nil {
+		if err := bagAIP(targetDir); err != nil {
 			return err
 		}
 
-		//bag the transfer
-		var bagCmd *exec.Cmd
-		if runtime.GOOS == "windows" {
-			bagCmd = exec.Command("python", "-m", "bagit", "--sha256", targetDir)
-		} else {
-			bagCmd = exec.Command("bagit.py", "--sha256", targetDir)
-		}
+	}
+	return nil
+}
 
-		cmdOut, err := bagCmd.CombinedOutput()
-		if err != nil {
-			return err
-		}
+func updateAIP(pkgPath string) error {
 
-		if err := os.WriteFile(logName, cmdOut, 0644); err != nil {
-			return err
-		}
+	fmt.Println("updating", filepath.Base(pkgPath))
 
+	bag, err := bagit.GetExistingBag(pkgPath)
+	if err != nil {
+		return err
+	}
+
+	dirUUID := bag.Name[len(bag.Name)-36:]
+
+	//Locate transfer-info.txt
+	fmt.Println("  * Locating transfer-info.txt")
+	tiFilename := fmt.Sprintf("%s-transfer-info.txt", dirUUID)
+
+	//create a tag set from transfer-info.txt
+	fmt.Printf("  * Creating new tag set from %s\n", "transfer-info.txt")
+	transferInfo, err := bagit.NewTagSet(tiFilename, config.TmpLoc)
+	if err != nil {
+		return err
+	}
+
+	//Update the hostname
+	fmt.Println("  * Adding hostname to tag set")
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	transferInfo.Tags["nyu-dl-hostname"] = hostname
+
+	//add pathname to the tag-set
+	fmt.Printf("  * Adding bag's path to tag set: ")
+	path, err := filepath.Abs(pkgPath)
+	if err != nil {
+		return err
+	}
+	path, err = filepath.EvalSymlinks(path)
+	if err != nil {
+		return err
+	}
+	transferInfo.Tags["nyu-dl-pathname"] = path
+
+	//getting tagset from bag-info
+	fmt.Printf("  * Creating new tag set from %s\n", "bag-info.txt")
+	bagInfo, err := bagit.NewTagSet("bag-info.txt", pkgPath)
+	if err != nil {
+		return err
+	}
+
+	//merge tagsets
+	fmt.Println("  * Merging Tag Sets")
+	bagInfo.AddTags(transferInfo.Tags)
+
+	fmt.Printf("  * Getting data as byte array\n")
+	bagInfoBytes := bagInfo.GetTagSetAsByteSlice()
+
+	fmt.Printf("  * Opening bag-info.txt\n")
+	bagInfoLocation := filepath.Join(pkgPath, "bag-info.txt")
+	bagInfoFile, err := os.Open(bagInfoLocation)
+	if err != nil {
+		return err
+	}
+	defer bagInfoFile.Close()
+
+	fmt.Printf("  * Rewriting bag-info.txt\n")
+	if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
+		return err
+	}
+	//create new manifest object for tagmanifest-sha256.txt
+	fmt.Printf("  * Creating new tagmanifest-sha256.txt\n")
+	tagManifest, err := bagit.NewManifest(pkgPath, "tagmanifest-sha256.txt")
+	if err != nil {
+		return err
+	}
+
+	//update the checksum for bag-info.txt
+	fmt.Printf("  * Updating checksum for bag-info.txt in tagmanifest-sha256.txt\n")
+	if err := tagManifest.UpdateManifest("bag-info.txt"); err != nil {
+		return err
+	}
+
+	fmt.Printf("  * Rewriting tagmanifest-sha256.txt\n")
+	if err := tagManifest.Serialize(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -141,111 +258,14 @@ func UpdateAIP() error {
 	}
 
 	for _, aipDir := range aipDirs {
-		fmt.Println("updating", aipDir.Name())
-		bagPath := filepath.Join(config.AIPLoc, aipDir.Name())
-
-		bag, err := bagit.GetExistingBag(bagPath)
-		if err != nil {
-			return err
-		}
-
-		dirUUID := bag.Name[len(bag.Name)-36:]
-
-		//Locate transfer-info.txt
-		fmt.Printf("  * Locating transfer-info.txt: ")
-		tiFilename := fmt.Sprintf("%s-transfer-info.txt", dirUUID)
-
-		fmt.Printf("OK\n")
-
-		//create a tag set from transfer-info.txt
-		fmt.Printf("  * Creating new tag set from %s: ", "transfer-info.txt")
-		transferInfo, err := bagit.NewTagSet(tiFilename, config.TmpLoc)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("OK\n")
-
-		//Update the hostname
-		fmt.Printf("  * Adding hostname to tag set: ")
-		hostname, err := os.Hostname()
-		if err != nil {
-			return err
-		}
-		transferInfo.Tags["nyu-dl-hostname"] = hostname
-		fmt.Printf("OK\n")
-
-		//add pathname to the tag-set
-		fmt.Printf("  * Adding bag's path to tag set: ")
-		path, err := filepath.Abs(bagPath)
-		if err != nil {
-			return err
-		}
-		path, err = filepath.EvalSymlinks(path)
-		if err != nil {
-			return err
-		}
-		transferInfo.Tags["nyu-dl-pathname"] = path
-		fmt.Printf("OK\n")
-
-		//getting tagset from bag-info
-		fmt.Printf("  * Creating new tag set from %s: ", "bag-info.txt")
-		bagInfo, err := bagit.NewTagSet("bag-info.txt", bagPath)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("OK\n")
-
-		//merge tagsets
-		fmt.Printf("  * Merging Tag Sets: ")
-		bagInfo.AddTags(transferInfo.Tags)
-		fmt.Printf("OK\n")
-
-		fmt.Printf("  * Getting data as byte array: ")
-		bagInfoBytes := bagInfo.GetTagSetAsByteSlice()
-		fmt.Printf("OK\n")
-
-		fmt.Printf("  * Opening bag-info.txt: ")
-		bagInfoLocation := filepath.Join(bagPath, "bag-info.txt")
-		bagInfoFile, err := os.Open(bagInfoLocation)
-		if err != nil {
-			return err
-		}
-		defer bagInfoFile.Close()
-		fmt.Printf("OK\n")
-
-		fmt.Printf("  * Rewriting bag-info.txt: ")
-		if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
-			return err
-		}
-		fmt.Printf("OK\n")
-
-		//create new manifest object for tagmanifest-sha256.txt
-		fmt.Printf("  * Creating new tagmanifest-sha256.txt: ")
-		tagManifest, err := bagit.NewManifest(bagPath, "tagmanifest-sha256.txt")
-		if err != nil {
-			return err
-		}
-		fmt.Printf("OK\n")
-
-		//update the checksum for bag-info.txt
-		fmt.Printf("  * Updating checksum for bag-info.txt in tagmanifest-sha256.txt: ")
-		if err := tagManifest.UpdateManifest("bag-info.txt"); err != nil {
-			return err
-		}
-		fmt.Printf("OK\n")
-
-		fmt.Printf("  * Rewriting tagmanifest-sha256.txt: ")
-		if err := tagManifest.Serialize(); err != nil {
-			return err
-		}
-		fmt.Printf("OK\n")
-
+		fmt.Println(aipDir.Name())
 	}
 
 	return nil
 }
 
 func ValidateAIPs() error {
+	fmt.Printf("rwt aip validate, %s\n", VERSION)
 	if err := loadConfig(); err != nil {
 		return err
 	}
@@ -293,6 +313,7 @@ func ValidateAIPs() error {
 }
 
 func TransferAIPs() error {
+	fmt.Printf("rwt aip transfer, %s\n", VERSION)
 
 	if err := loadConfig(); err != nil {
 		return err

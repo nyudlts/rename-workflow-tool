@@ -10,6 +10,8 @@ import (
 	"github.com/nyudlts/bytemath"
 )
 
+const VERSION = "v0.9.0"
+
 var (
 	config *Config
 	writer *bufio.Writer

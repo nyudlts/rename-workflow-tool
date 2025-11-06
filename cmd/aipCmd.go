@@ -46,7 +46,7 @@ var aipPrepCmd = &cobra.Command{
 	Use: "prep",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Println("aip prep command executed")
-		if err := lib.PrepAIP(); err != nil {
+		if err := lib.PrepAIPs(); err != nil {
 			panic(err)
 		}
 	},
@@ -56,7 +56,7 @@ var aipBagCmd = &cobra.Command{
 	Use: "bag",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Println("aip bag command executed")
-		if err := lib.BagAIP(); err != nil {
+		if err := lib.BagAIPs(); err != nil {
 			panic(err)
 		}
 	},
