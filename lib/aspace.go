@@ -16,6 +16,8 @@ import (
 var aspaceConfigLoc string
 
 func CheckAspace() error {
+	fmt.Printf("rwt aspace check, %s\n", VERSION)
+
 	if err := loadConfig(); err != nil {
 		return err
 	}

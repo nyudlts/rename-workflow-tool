@@ -11,11 +11,8 @@ var (
 	collectionCode string
 	sourceLocation string
 )
-var rootCmd = &cobra.Command{
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Welcome to the AV Processor CLI!")
-	},
-}
+
+var rootCmd = &cobra.Command{}
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {

@@ -34,6 +34,7 @@ func (sds SIPDirs) contains(s string) bool {
 }
 
 func GetSipSize() error {
+	fmt.Printf("rwt sip size, %s\n", VERSION)
 	if err := loadConfig(); err != nil {
 		return err
 	}
@@ -46,6 +47,7 @@ func GetSipSize() error {
 }
 
 func ValidateSip() error {
+	fmt.Printf("rwt sip validate, %s\n", VERSION)
 	validationError := false
 	//load the project configuration
 	if err := loadConfig(); err != nil {

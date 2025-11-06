@@ -9,6 +9,8 @@ import (
 )
 
 func InitializeProject(collectionCode string, sourceLocation string) error {
+	fmt.Printf("rwt project init, %s\n", VERSION)
+
 	// check if collectionCode and sourceLocation are provided
 	if collectionCode == "" || sourceLocation == "" {
 		return fmt.Errorf("Collection code and source location must be provided")

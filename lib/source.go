@@ -10,6 +10,8 @@ import (
 )
 
 func PrintSourceSize() error {
+	fmt.Printf("rwt source size, %s\n", VERSION)
+
 	if err := loadConfig(); err != nil {
 		return err
 	}
@@ -22,6 +24,7 @@ func PrintSourceSize() error {
 }
 
 func TransferSourcePackage() error {
+	fmt.Printf("rwt sip size, %s\n", VERSION)
 	//create a log file for source transfer
 	if err := loadConfig(); err != nil {
 		return err
